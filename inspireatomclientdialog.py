@@ -73,6 +73,11 @@ class InspireAtomClientDialog(QDialog, FORM_CLASS):
 
         self.cmbDatasetRepresentations.currentIndexChanged.connect(self.update_lw_files)
 
+        self.download_directory = None
+        self.btnSelectDownloadDir = QPushButton("Select Download Directory")
+        self.btnSelectDownloadDir.clicked.connect(self._select_download_directory)
+        self.layout().addWidget(self.btnSelectDownloadDir)
+
     def init_variables(self):
         self.onlineresource = ""
         self.layername = ""
@@ -1019,3 +1024,20 @@ class InspireAtomClientDialog(QDialog, FORM_CLASS):
                 str(bytesRead), content_length
             )
         )
+
+    def _select_download_directory(self):
+        """
+        Prompts the user to select a directory for downloads.
+        """
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Download Directory",
+            "",  # Start in the user's home directory
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if directory:
+            self.download_directory = directory
+            self.log_message(f"Selected download directory: {directory}", Qgis.Info)
+        else:
+            self.download_directory = None
+            self.log_message("No download directory selected.", Qgis.Warning)
