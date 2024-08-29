@@ -27,7 +27,7 @@ import tempfile
 from urllib.parse import urljoin, urlparse
 from xml.etree import ElementTree
 
-from PyQt5 import QtXmlPatterns, uic
+from PyQt5 import uic
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtNetwork import *
@@ -528,27 +528,37 @@ class InspireAtomClientDialog(QDialog, FORM_CLASS):
             )
             xml_source = str(response_content, "utf_8")
 
-        qry = QtXmlPatterns.QXmlQuery(QtXmlPatterns.QXmlQuery.XSLT20)
-        qry.setMessageHandler(MessageHandler())
-        qry.setFocus(xml_source)
-        qry.setQuery(QUrl("file:///" + xslfilename))
+        # Perform XSLT transformation with lxml
+        try:
+            # Load the XSLT file
+            xslt_tree = etree.parse(xslfilename)
+            transform = etree.XSLT(xslt_tree)
 
-        html = qry.evaluateToString()
+            # Parse XML data
+            xml_tree = etree.fromstring(xml_source.encode("utf-8"))
 
-        if html:
-            # create and show the dialog
-            dlg = MetadataClientDialog()
-            dlg.wvMetadata.setHtml(html)
-            # show the dialog
-            dlg.show()
-            result = dlg.exec_()
-            # See if OK was pressed
-            if result == 1:
-                # do something useful (delete the line containing pass and
-                # substitute with your code
-                pass
-        else:
-            QMessageBox.critical(self, "Metadata Error", "Unable to read the Metadata")
+            # Perform the transformation
+            result_tree = transform(xml_tree)
+
+            # Convert the result to a string
+            html = str(result_tree)
+
+            # Display the transformed HTML in the dialog
+            if html:
+                dlg = MetadataClientDialog()
+                dlg.wvMetadata.setHtml(html)
+                dlg.show()
+                result = dlg.exec_()
+                if result == 1:
+                    pass
+            else:
+                QMessageBox.critical(
+                    self, "Metadata Error", "Unable to read the Metadata"
+                )
+
+        except (etree.XMLSyntaxError, etree.XSLTApplyError) as e:
+            self.log_message(f"XSLT processing error: {e}", Qgis.Critical)
+            QMessageBox.critical(self, "XSLT Error", f"XSLT processing error: {e}")
 
     """
     ############################################################################################################################
@@ -1009,11 +1019,3 @@ class InspireAtomClientDialog(QDialog, FORM_CLASS):
                 str(bytesRead), content_length
             )
         )
-
-
-class MessageHandler(QtXmlPatterns.QAbstractMessageHandler):
-    def handleMessage(self, msg_type, description, identifier, source_location):
-        if "QgsMessageLog" in globals():
-            QgsMessageLog.logMessage(
-                str(msg_type) + description, "Wfs20Client", Qgis.Info
-            )
