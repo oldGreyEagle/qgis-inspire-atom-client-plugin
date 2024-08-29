@@ -840,9 +840,20 @@ class InspireAtomClientDialog(QDialog, FORM_CLASS):
             QgsMessageLog.logMessage(message, "INSPIRE Atom Client", level)
 
     def get_temppath(self, filename):
-        tmpdir = os.path.join(tempfile.gettempdir(), "inspireatomclient")
+        """
+        Returns the full path to save the file in the user-selected directory.
+        If the user has not selected a directory, it defaults to a temporary directory.
+        """
+        if hasattr(self, "download_directory") and self.download_directory:
+            # Use the user-selected directory
+            tmpdir = self.download_directory
+        else:
+            # Fall back to the default temporary directory
+            tmpdir = os.path.join(tempfile.gettempdir(), "inspireatomclient")
+
         if not os.path.exists(tmpdir):
             os.makedirs(tmpdir)
+
         tmpfile = os.path.join(tmpdir, filename)
         return tmpfile
 
